@@ -3,6 +3,12 @@
 	<head>
 		<title>Graphic Calculator</title>
 		<link href="style.css" rel="stylesheet">
+		<script>
+			MathJax = {
+				tex: {inlineMath: [['$', '$'], ['\\(', '\\)']]}
+			};
+    </script>
+		<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 	</head>
 	<body>
 		<h1>graf</h1>
@@ -13,6 +19,10 @@
 			<li id="Circle">Circle</li>
 		</ul>
 		<canvas id="canvas"></canvas>
+		<div id="expression-container">
+			<div>$f(x)=$ <input type="label"/>
+			</div>
+		</div>
 		<script src="index.js" defer></script>
 	</body>
 </html>

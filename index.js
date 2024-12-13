@@ -4,38 +4,60 @@ class Shape {
 }
 
 class Dot extends Shape {
-	constructor(cords,connectedDots=null) {
+	constructor(pts,parent_=null) {
 		super()
-		this.cords = cords
-		this.connectedDots = connectedDots
-	}
-	render(ctx, viewpoint) {
-		ctx.fillStyle = "black"
-		ctx.fillRect(this.cords.x+viewpoint.x-2,this.cords.y+viewpoint.y-2,4,4)
-	}
-}
-
-class Line extends Shape {
-	constructor(cords,connectedDots=null) {
-		super()
-		this.cords = cords
-		this.connectedDots = connectedDots
+		this.pt = pts[0]
+		this.parent_ = parent_
 	}
 	render(ctx) {
 		ctx.beginPath()
-		ctx.moveTo(this.cords[0].x, this.cords[0].y)
-		ctx.lineTo(this.cords[1].x, this.cords[1].y)
-		ctx.stroke()
+		ctx.fillStyle = "black"
+		const pixel = convertPointToPixel(this.pt)
+		ctx.arc(pixel.x,pixel.y,2,0,2*Math.PI)
+		ctx.fill()
 	}
+	static neededCords() { return 1 }
+}
+
+class Line extends Shape {
+	constructor(pts) {
+		super()
+		this.pts = pts
+		this.connectedDots = [new Dot(pts), new Dot([pts[1]])]
+		shapes.push(this.connectedDots[0])
+		shapes.push(this.connectedDots[1])
+	}
+	render(ctx) {
+		ctx.beginPath()
+		const pixels = [convertPointToPixel(this.pts[0]),convertPointToPixel(this.pts[1])]
+		ctx.moveTo(pixels[0].x, pixels[0].y)
+		ctx.lineTo(pixels[1].x, pixels[1].y)
+		ctx.stroke()
+
+		this.connectedDots[0].render(ctx)
+		this.connectedDots[1].render(ctx)
+	}
+	static neededCords() { return 2 }
 }
 
 class Circle extends Shape {
-	constructor(cords,connectedDots=null) {
-		this.cords = cords
-		this.connectedDots = connectedDots
+	constructor(pts) {
+		super()
+		this.pt = pts[0]
+		this.radius = Math.sqrt((pts[1].x-pts[0].x)**2+(pts[1].y-pts[0].y)**2)
+		this.connectedDots = [new Dot(pts), new Dot([pts[1]])]
 	}
-	render(ctx, viewpoint) {
+	render(ctx) {
+		const pixel = convertPointToPixel(this.pt)
+		ctx.beginPath()
+		ctx.fillStyle = "black"
+		ctx.arc(pixel.x,pixel.y,this.radius,0,2*Math.PI)
+		ctx.stroke()
+
+		this.connectedDots[0].render(ctx)
+		this.connectedDots[1].render(ctx)
 	}
+	static neededCords() { return 2 }
 }
 
 function drawGrid(viewpoint,ctx) {
@@ -51,16 +73,28 @@ const ctx = canvas.getContext("2d")
 canvas.width = 800
 canvas.height = 600
 
+let canvas_rect = canvas.getBoundingClientRect()
+
 let viewpoint = {
-	x: canvas.width/2,
+	x: canvas.width/2, // (0,0) origin cords in terms of real cords
 	y: canvas.height/2,
 	zoom: 1
 }
+
+drawGrid(viewpoint,ctx)
 
 let mode = "move"
 let currentTool = Dot
 
 let shapes = []
+let currentPoints = []
+
+function convertPixelToPoint(pixel) {
+	return {x:pixel.x-canvas_rect.left-viewpoint.x, y:pixel.y-canvas_rect.top-viewpoint.y}
+}
+function convertPointToPixel(point) {
+	return {x:point.x+viewpoint.x, y:point.y+viewpoint.y}
+}
 
 // bind keys
 document.getElementById("move-mode")
@@ -76,16 +110,13 @@ for (const tool of document.getElementById("tool-picker").children) {
 // canvas interaction
 canvas.addEventListener("click", e => {
 	if (mode === "shape") {
-		switch(currentTool) {
-			case Dot:
-				const canvas_rect = canvas.getBoundingClientRect()
-				shapes.push(
-					new currentTool({x:e.clientX-canvas_rect.left-viewpoint.x, y:e.clientY-canvas_rect.top-viewpoint.y})
-				)
-				shapes[shapes.length-1].render(ctx,viewpoint)
-				break
-			case Line:
-				break
+		currentPoints.push(convertPixelToPoint({x:e.clientX,y:e.clientY}))
+		if (currentTool.neededCords() == currentPoints.length){
+			shapes.push(
+			  new currentTool(currentPoints)
+			)
+			shapes[shapes.length-1].render(ctx)
+			currentPoints = []
 		}
 	}
 })
